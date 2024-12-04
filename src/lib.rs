@@ -1,9 +1,30 @@
 use eframe::egui::{self, Color32, RichText, Vec2};
 
+pub fn github_report_bug_url(repo_owner: String, repo_name: String) -> impl ReportBugUrlMaker {
+    move |payload, bug_report| {
+        format!(
+            "https://github.com/{repo_owner}/{repo_name}/issues/new?title=Unhandled panic: {}&body={}",
+            urlencoding::encode(&payload.unwrap_or_default()),
+            urlencoding::encode(&format!("### Panic report\n{bug_report}"))
+        )
+    }
+}
+
+pub trait ReportBugUrlMaker:
+    Fn(Option<String>, String) -> String + Clone + Send + Sync + 'static
+{
+}
+impl<T: Fn(Option<String>, String) -> String + Clone + Send + Sync + 'static> ReportBugUrlMaker
+    for T
+{
+}
+
 #[derive(Clone, Debug)]
-pub struct AppInfo {
+pub struct AppInfo<F: ReportBugUrlMaker> {
     pub name: &'static str,
+    pub additional_text: &'static str,
     pub links: Vec<Link>,
+    pub report_bug_url: Option<F>,
 }
 
 #[derive(Clone, Debug)]
@@ -12,15 +33,44 @@ pub struct Link {
     pub url: &'static str,
 }
 
-pub fn show_gui_egui(
+pub fn details<F: ReportBugUrlMaker>(
+    panic_payload_display: &Option<String>,
+    panic_formatted: &String,
+    app_info: &AppInfo<F>,
+) -> String {
+    format!(
+        "**Panic report from {}**
+
+{}
+
+Package name: `{}`
+Version: `{}`
+
+Panic info:
+```
+{panic_formatted}
+```",
+        panic_payload_display
+            .as_ref()
+            .unwrap_or(&String::from("[PAYLOAD IS NOT A STRING]")),
+        app_info.name,
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION"),
+    )
+}
+
+pub fn show_gui_egui<F: ReportBugUrlMaker>(
     panic_payload_display: Option<String>,
     panic_formatted: String,
-    app_info: AppInfo,
+    app_info: AppInfo<F>,
 ) {
     eframe::run_simple_native(
         "Crash report",
         eframe::NativeOptions {
-            viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
+            viewport: egui::ViewportBuilder::default()
+                .with_maximize_button(false)
+                .with_always_on_top()
+                .with_inner_size([512.0, 256.0]),
             ..Default::default()
         },
         move |ctx, _frame| {
@@ -38,12 +88,49 @@ pub fn show_gui_egui(
                             ui.vertical(|ui| {
                                 ui.heading(format!("{} crashed", app_info.name));
 
+                                ui.add_space(8.0);
+
+                                ui.label(app_info.additional_text);
+
                                 if let Some(panic_payload_display) = &panic_payload_display {
                                     ui.horizontal_wrapped(|ui| {
-                                        //ui.strong("Reason:");
-                                        ui.label(panic_payload_display);
+                                        ui.strong("Reason:");
+                                        ui.monospace(panic_payload_display);
                                     });
                                 };
+
+                                ui.add_space(8.0);
+
+                                ui.horizontal_wrapped(|ui| {
+                                    if ui.button("📋 Copy details").clicked() {
+                                        ui.output_mut(|out| {
+                                            out.copied_text = details(
+                                                &panic_payload_display,
+                                                &panic_formatted,
+                                                &app_info,
+                                            );
+                                        });
+                                    }
+                                    if let Some(get_report_bug_url) = &app_info.report_bug_url {
+                                        if ui.button("💬 Report crash").clicked() {
+                                            ui.output_mut(|out| {
+                                                out.open_url = Some(egui::OpenUrl {
+                                                    url: get_report_bug_url(
+                                                        panic_payload_display.clone(),
+                                                        details(
+                                                            &panic_payload_display,
+                                                            &panic_formatted,
+                                                            &app_info,
+                                                        ),
+                                                    ),
+                                                    new_tab: true,
+                                                });
+                                            });
+                                        }
+                                    }
+                                });
+
+                                ui.add_space(8.0);
 
                                 ui.horizontal_wrapped(|ui| {
                                     let mut links = app_info.links.iter();
@@ -97,7 +184,7 @@ pub fn show_gui_egui(
     .unwrap();
 }
 
-pub fn register(info: AppInfo) {
+pub fn register<F: ReportBugUrlMaker>(info: AppInfo<F>) {
     std::panic::set_hook(Box::new(move |panic_info| {
         let panic_formatted = format!("{:#?}", panic_info);
 

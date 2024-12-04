@@ -27,9 +27,13 @@
             (import rust-overlay)
           ];
         };
-        cargoNix = crate2nix.tools.${system}.appliedCargoNix {
-            name = "gui_panic_handler";
-            src = ./.;
+        rust = pkgs.rust-bin.stable.latest.default.override {
+            extensions = [ "rust-src" ];
+        };
+        crate2nix' = pkgs.callPackage (import "${crate2nix}/tools.nix") {};
+        cargoNix = crate2nix'.appliedCargoNix {
+          name = "gui_panic_handler";
+          src = ./.;
         };
 
         # TODO: Is anything superflous here?
@@ -61,9 +65,7 @@
 
         devShell = pkgs.mkShell rec {
           nativeBuildInputs = [
-            (pkgs.rust-bin.stable.latest.default.override {
-                  extensions = [ "rust-src" "cargo" "rustc" ];
-            })
+            rust
             pkgs.gcc
           ] ++ eguiLibs;
 
@@ -71,9 +73,7 @@
               export LD_LIBRARY_PATH=/run/opengl-driver/lib/:${pkgs.lib.makeLibraryPath eguiLibs}
           '';
 
-          RUST_SRC_PATH = "${pkgs.rust-bin.stable.latest.default.override {
-              extensions = [ "rust-src" ];
-          }}/lib/rustlib/src/rust/library";
+          RUST_SRC_PATH = "${rust}/lib/rustlib/src/rust/library";
 
 
           buildInputs = with pkgs; [
