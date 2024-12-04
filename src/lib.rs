@@ -1,28 +1,82 @@
-use eframe::egui::{self, RichText};
+use eframe::egui::{self, Color32, RichText, Vec2};
 
-pub fn show_gui(panic_payload_display: Option<String>, panic_formatted: String) {
+#[derive(Clone, Debug)]
+pub struct AppInfo {
+    pub name: &'static str,
+    pub links: Vec<Link>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Link {
+    pub label: &'static str,
+    pub url: &'static str,
+}
+
+pub fn show_gui_egui(
+    panic_payload_display: Option<String>,
+    panic_formatted: String,
+    app_info: AppInfo,
+) {
     eframe::run_simple_native(
-        "My egui App",
+        "Crash report",
         eframe::NativeOptions {
             viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
             ..Default::default()
         },
         move |ctx, _frame| {
+            ctx.style_mut(|style| {
+                style.spacing.item_spacing = Vec2::new(4.0, 0.0);
+            });
+
             egui::CentralPanel::default().show(ctx, |ui| {
                 ui.vertical(|ui| {
                     egui::ScrollArea::vertical().show(ui, |ui| {
                         ui.set_width(ui.available_width());
                         ui.horizontal(|ui| {
-                            ui.label(RichText::new("⚠").size(48.0));
+                            ui.label(RichText::new("⚠").size(48.0).color(Color32::RED));
+                            ui.add_space(16.0);
                             ui.vertical(|ui| {
-                                ui.heading("App crashed");
+                                ui.heading(format!("{} crashed", app_info.name));
 
                                 if let Some(panic_payload_display) = &panic_payload_display {
-                                    ui.label(panic_payload_display);
+                                    ui.horizontal_wrapped(|ui| {
+                                        //ui.strong("Reason:");
+                                        ui.label(panic_payload_display);
+                                    });
                                 };
 
+                                ui.horizontal_wrapped(|ui| {
+                                    let mut links = app_info.links.iter();
+                                    if let Some(link) = links.next() {
+                                        if ui.link(link.label).clicked() {
+                                            ctx.open_url(egui::OpenUrl {
+                                                url: link.url.to_owned(),
+                                                new_tab: true,
+                                            });
+                                        };
+                                    }
+                                    for link in links {
+                                        ui.separator();
+                                        if ui.link(link.label).clicked() {
+                                            ctx.open_url(egui::OpenUrl {
+                                                url: link.url.to_owned(),
+                                                new_tab: true,
+                                            });
+                                        }
+                                    }
+                                });
+
+                                ui.add_space(16.0);
+                                ui.horizontal_wrapped(|ui| {
+                                    ui.strong("Package name:");
+                                    ui.monospace(env!("CARGO_PKG_NAME"));
+                                });
+                                ui.horizontal_wrapped(|ui| {
+                                    ui.strong("Version:");
+                                    ui.label(env!("CARGO_PKG_VERSION"));
+                                });
+
                                 ui.collapsing("Developer information", |ui| {
-                                    ui.strong("Panic info");
                                     ui.monospace(&panic_formatted);
 
                                     /*ui.strong("Panic payload");
@@ -43,8 +97,24 @@ pub fn show_gui(panic_payload_display: Option<String>, panic_formatted: String) 
     .unwrap();
 }
 
-pub fn register() {
-    std::panic::set_hook(Box::new(|panic_info| {
+pub fn show_gui_dialog(
+    panic_payload_display: Option<String>,
+    panic_formatted: String,
+    info: AppInfo,
+) {
+    native_dialog::MessageDialog::new()
+        .set_title("Crash report")
+        .set_text(&format!(
+            "App crashed.\n{}",
+            panic_payload_display.unwrap_or_default()
+        ))
+        .set_type(native_dialog::MessageType::Error)
+        .show_alert()
+        .unwrap();
+}
+
+pub fn register(info: AppInfo) {
+    std::panic::set_hook(Box::new(move |panic_info| {
         let panic_formatted = format!("{:#?}", panic_info);
 
         let panic_payload_display = if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
@@ -78,6 +148,6 @@ pub fn register() {
             println!("Panic payload doesn't implement `Debug`")
         }*/
 
-        show_gui(panic_payload_display, panic_formatted);
+        show_gui_egui(panic_payload_display, panic_formatted, info.clone());
     }));
 }
