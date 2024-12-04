@@ -1,9 +1,7 @@
-use std::path::PathBuf;
-
-use gui_panic_handler::AppInfo;
-use gui_panic_handler::Link;
-
 fn main() {
+    use gui_panic_handler::AppInfo;
+    use gui_panic_handler::Link;
+
     gui_panic_handler::register(AppInfo {
         name: "GUI panic handler testing app",
         additional_text: "We are sorry, the app crashed. To let us fix the crash, please report it using the button below.",
@@ -23,7 +21,7 @@ fn main() {
         ],
         report_bug_url: Some(gui_panic_handler::github_report_bug_url(
             String::from("FireFragment"),
-            String::from("hyperoperation-rs"),
+            String::from("rust_gui_panic_handler"),
         )),
     });
 
