@@ -1,6 +1,6 @@
 # GUI panic handler
 
-![screenshot of a panic dialog](docs/screenshot.png)
+![screenshot of a panic dialog](./docs/screenshot.png)
 
 This crate allows you to handle crashes with a GUI dialog made with [egui](https://github.com/emilk/egui).
 
