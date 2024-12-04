@@ -97,22 +97,6 @@ pub fn show_gui_egui(
     .unwrap();
 }
 
-pub fn show_gui_dialog(
-    panic_payload_display: Option<String>,
-    panic_formatted: String,
-    info: AppInfo,
-) {
-    native_dialog::MessageDialog::new()
-        .set_title("Crash report")
-        .set_text(&format!(
-            "App crashed.\n{}",
-            panic_payload_display.unwrap_or_default()
-        ))
-        .set_type(native_dialog::MessageType::Error)
-        .show_alert()
-        .unwrap();
-}
-
 pub fn register(info: AppInfo) {
     std::panic::set_hook(Box::new(move |panic_info| {
         let panic_formatted = format!("{:#?}", panic_info);
