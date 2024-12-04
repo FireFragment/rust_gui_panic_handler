@@ -3,7 +3,7 @@ fn main() {
     use gui_panic_handler::Link;
 
     gui_panic_handler::register(AppInfo {
-        name: "GUI panic handler testing app",
+        name: "Sample app",
         additional_text: "We are sorry, the app crashed. To let us fix the crash, please report it using the button below.",
         links: vec![
             Link {
