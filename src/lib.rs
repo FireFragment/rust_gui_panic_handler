@@ -92,7 +92,7 @@ pub struct AppInfo<#[cfg(feature = "error-reporting")] F: ReportBugUrlMaker> {
     ///
     /// ```
     ///
-    /// If you don't want to have bug report button, you can use [`AppInfoNoBugReport`] instead and set this field to `None`
+    /// If you don't want to have bug report button, you can disable the `error-reporting` feature or use [`AppInfoNoBugReport`] instead and set this field to `None`
     #[cfg(feature = "error-reporting")]
     pub report_bug_url: Option<F>,
 }

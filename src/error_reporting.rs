@@ -54,4 +54,6 @@ impl ReportBugUrlMaker for Infallible {
 /// Type alias for [`AppInfo`](crate::AppInfo) to help solve generics inference issue in case of no bug reporting.
 ///
 /// Just set `report_bug_url` field to [`None`] while using this alias.
+///
+/// Note: It is recommended to disable the `error-reporting` feature instead of using this alias.
 pub type AppInfoNoBugReport = super::AppInfo<Infallible>;
