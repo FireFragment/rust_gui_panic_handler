@@ -1,65 +1,68 @@
-use std::convert::Infallible;
-pub use urlencoding;
+#![doc = r#"
+# GUI panic handler
+
+This crate allows you to handle panics with a GUI dialog made with [egui](https://github.com/emilk/egui).
+
+The dialog shows panic payload, information about location of the panic and
+if you want, an option to report the panic to developer and external links.
+
+You will most likely want to use [`register`] to register the panic handler.
+
+"#]
+#![cfg_attr(
+    feature = "error-reporting",
+    doc = r#"
+
+## A simple example:
+```rust,no_run
+use gui_panic_handler::AppInfo;
+use gui_panic_handler::Link;
+
+gui_panic_handler::register(AppInfo {
+    name: "Sample app",
+    additional_text: "We are sorry, the app crashed. To let us fix the crash, please report it using the button below.",
+    links: vec![
+        Link {
+            label: "Browse known crash causes",
+            url: "https://example.com",
+        },
+        Link {
+            label: "Get help on the forum",
+            url: "https://example.com",
+        },
+        Link {
+            label: "Our website",
+            url: "https://example.com",
+        },
+    ],
+    report_bug_url: Some(gui_panic_handler::GitHubBugReporter::new(
+        String::from("FireFragment"),
+        String::from("rust_gui_panic_handler"),
+    )),
+});
+
+println!("Reading env var...");
+let env_var_value = std::env::var("SUPER_IMPORTANT_ENVIRONMENT_VARIABLE").unwrap();
+
+println!("Read: {env_var_value}")
+```
+"#
+)]
+
+#[cfg(feature = "error-reporting")]
+mod error_reporting;
+#[cfg(feature = "error-reporting")]
+pub use error_reporting::*;
 
 use eframe::egui::{self, Color32, RichText, Vec2};
 
-#[non_exhaustive]
-#[derive(Clone, Debug)]
-pub struct GitHubBugReporter {
-    pub repo_owner: String,
-    pub repo_name: String,
-}
-
-impl GitHubBugReporter {
-    pub fn new(repo_owner: String, repo_name: String) -> Self {
-        Self {
-            repo_owner,
-            repo_name,
-        }
-    }
-}
-
-impl ReportBugUrlMaker for GitHubBugReporter {
-    fn get_report_url(&self, payload: Option<String>, bug_report: String) -> String {
-        format!(
-            "https://github.com/{}/{}/issues/new?title=Unhandled panic: {}&body={}",
-            self.repo_owner,
-            self.repo_name,
-            urlencoding::encode(&payload.unwrap_or_default()),
-            urlencoding::encode(&format!("### Panic report\n{bug_report}"))
-        )
-    }
-}
-
-/// Generates a URL for bug reports - to be used as [`AppInfo::report_bug_url`]
-///
-/// If you are using GitHub, you can use the [`github_report_bug_url`] function.
-pub trait ReportBugUrlMaker: Clone + Send + Sync + 'static {
-    fn get_report_url(&self, payload: Option<String>, bug_report: String) -> String;
-}
-
-impl<T: Fn(Option<String>, String) -> String + Clone + Send + Sync + 'static> ReportBugUrlMaker
-    for T
-{
-    fn get_report_url(&self, payload: Option<String>, bug_report: String) -> String {
-        self(payload, bug_report)
-    }
-}
-
-impl ReportBugUrlMaker for Infallible {
-    fn get_report_url(&self, _payload: Option<String>, _bug_report: String) -> String {
-        eprintln!("Called `get_report_url` of `Infallible` - `Infallible` should never exist, but here it is: {self:?}");
-        String::new()
-    }
-}
-
-pub type AppInfoNoBugReport = AppInfo<Infallible>;
-
 /// Information about the application used in the error dialog box
-///
-/// If you don't want to have bug report button, you can use [`AppInfoNoBugReport`] instead
+#[cfg_attr(
+    feature = "error-reporting",
+    doc = r#"If you don't want to have bug report button, you can use [`AppInfoNoBugReport`] instead"#
+)]
 #[derive(Clone, Debug)]
-pub struct AppInfo<F: ReportBugUrlMaker = Infallible> {
+pub struct AppInfo<#[cfg(feature = "error-reporting")] F: ReportBugUrlMaker> {
     /// Name of the application
     pub name: &'static str,
     pub additional_text: &'static str,
@@ -67,20 +70,30 @@ pub struct AppInfo<F: ReportBugUrlMaker = Infallible> {
     /// Links to be displayed in the error dialog box
     pub links: Vec<Link>,
 
-    /// Used to generate a URL for bug reports
-    /// If you are using GitHub, you can use the ready-made [`github_report_bug_url`] reporter
+    /// Used to generate a URL for bug reports.
+    /// If you are using GitHub, you can use the ready-made [`GitHubBugReporter`] reporter.
     ///
     /// You can use simple closure like this:
     /// ```
-    /// |payload: Option<String>, bug_report| {
-    /// format!(
-    ///     "https://github.com/FireFragment/rust_gui_panic_handler/issues/new?title=Unhandled panic: {}&body={}",
-    ///     gui_panic_handler::urlencoding::encode(&payload.unwrap_or_default()),
-    ///     gui_panic_handler::urlencoding::encode(&format!("### Panic report\n{bug_report}"))
-    /// )
+    /// # let report =
+    /// Some(|payload: Option<String>, bug_report| {
+    ///     format!(
+    ///         "https://github.com/FireFragment/rust_gui_panic_handler/issues/new?title=Unhandled panic: {}&body={}",
+    ///         gui_panic_handler::urlencoding::encode(&payload.unwrap_or_default()),
+    ///         gui_panic_handler::urlencoding::encode(&format!("### Panic report\n{bug_report}"))
+    ///     )
+    /// })
+    /// # ; gui_panic_handler::AppInfo {
+    /// #   name: "Sample app",
+    /// #   additional_text: "",
+    /// #   links: Vec::new(),
+    /// #   report_bug_url: report,
+    /// # };
+    ///
     /// ```
     ///
     /// If you don't want to have bug report button, you can use [`AppInfoNoBugReport`] instead and set this field to `None`
+    #[cfg(feature = "error-reporting")]
     pub report_bug_url: Option<F>,
 }
 
@@ -94,10 +107,11 @@ pub struct Link {
 /// Puts all details about the crash to a single [string](String).
 ///
 /// Currently used for the `Report crash` and `Copy details` buttons
-pub fn details<F: ReportBugUrlMaker>(
+pub fn details<#[cfg(feature = "error-reporting")] F: ReportBugUrlMaker>(
     panic_payload_display: &Option<String>,
     panic_formatted: &String,
-    app_info: &AppInfo<F>,
+    #[cfg(feature = "error-reporting")] app_info: &AppInfo<F>,
+    #[cfg(not(feature = "error-reporting"))] app_info: &AppInfo,
 ) -> String {
     format!(
         "**Panic report from {}**
@@ -120,10 +134,12 @@ Panic info:
     )
 }
 
-pub fn show_gui_egui<F: ReportBugUrlMaker>(
+/// Displays the panic dialog using [egui]
+pub fn show_gui_egui<#[cfg(feature = "error-reporting")] F: ReportBugUrlMaker>(
     panic_payload_display: Option<String>,
     panic_formatted: String,
-    app_info: AppInfo<F>,
+    #[cfg(feature = "error-reporting")] app_info: AppInfo<F>,
+    #[cfg(not(feature = "error-reporting"))] app_info: AppInfo,
 ) {
     eframe::run_simple_native(
         "Crash report",
@@ -172,6 +188,7 @@ pub fn show_gui_egui<F: ReportBugUrlMaker>(
                                             );
                                         });
                                     }
+                                    #[cfg(feature = "error-reporting")]
                                     if let Some(bug_report_url_maker) = &app_info.report_bug_url {
                                         if ui.button("💬 Report crash").clicked() {
                                             ui.output_mut(|out| {
@@ -245,7 +262,11 @@ pub fn show_gui_egui<F: ReportBugUrlMaker>(
     .unwrap();
 }
 
-pub fn register<F: ReportBugUrlMaker>(info: AppInfo<F>) {
+/// Register the panic handler. Run at the beggining of your program.
+pub fn register<#[cfg(feature = "error-reporting")] F: ReportBugUrlMaker>(
+    #[cfg(feature = "error-reporting")] app_info: AppInfo<F>,
+    #[cfg(not(feature = "error-reporting"))] app_info: AppInfo,
+) {
     std::panic::set_hook(Box::new(move |panic_info| {
         let panic_formatted = format!("{:#?}", panic_info);
 
@@ -280,6 +301,6 @@ pub fn register<F: ReportBugUrlMaker>(info: AppInfo<F>) {
             println!("Panic payload doesn't implement `Debug`")
         }*/
 
-        show_gui_egui(panic_payload_display, panic_formatted, info.clone());
+        show_gui_egui(panic_payload_display, panic_formatted, app_info.clone());
     }));
 }

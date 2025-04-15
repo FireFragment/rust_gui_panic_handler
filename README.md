@@ -2,7 +2,7 @@
 
 ![screenshot of a panic dialog](./docs/screenshot.png)
 
-This crate allows you to handle crashes with a GUI dialog made with [egui](https://github.com/emilk/egui).
+This crate allows you to handle panics with a GUI dialog made with [egui](https://github.com/emilk/egui).
 
 The dialog shows panic payload, information about location of the panic and
 if you want, an option to report the panic to developer and external links.
