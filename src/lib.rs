@@ -1,11 +1,30 @@
 use std::convert::Infallible;
+pub use urlencoding;
 
 use eframe::egui::{self, Color32, RichText, Vec2};
 
-pub fn github_report_bug_url(repo_owner: String, repo_name: String) -> impl ReportBugUrlMaker {
-    move |payload: Option<String>, bug_report| {
+#[non_exhaustive]
+#[derive(Clone, Debug)]
+pub struct GitHubBugReporter {
+    pub repo_owner: String,
+    pub repo_name: String,
+}
+
+impl GitHubBugReporter {
+    pub fn new(repo_owner: String, repo_name: String) -> Self {
+        Self {
+            repo_owner,
+            repo_name,
+        }
+    }
+}
+
+impl ReportBugUrlMaker for GitHubBugReporter {
+    fn get_report_url(&self, payload: Option<String>, bug_report: String) -> String {
         format!(
-            "https://github.com/{repo_owner}/{repo_name}/issues/new?title=Unhandled panic: {}&body={}",
+            "https://github.com/{}/{}/issues/new?title=Unhandled panic: {}&body={}",
+            self.repo_owner,
+            self.repo_name,
             urlencoding::encode(&payload.unwrap_or_default()),
             urlencoding::encode(&format!("### Panic report\n{bug_report}"))
         )
@@ -34,7 +53,11 @@ impl ReportBugUrlMaker for Infallible {
     }
 }
 
+pub type AppInfoNoBugReport = AppInfo<Infallible>;
+
 /// Information about the application used in the error dialog box
+///
+/// If you don't want to have bug report button, you can use [`AppInfoNoBugReport`] instead
 #[derive(Clone, Debug)]
 pub struct AppInfo<F: ReportBugUrlMaker = Infallible> {
     /// Name of the application
@@ -44,8 +67,20 @@ pub struct AppInfo<F: ReportBugUrlMaker = Infallible> {
     /// Links to be displayed in the error dialog box
     pub links: Vec<Link>,
 
-    /// A function to generate a URL for bug reports
-    /// If you are using GitHub, you can use the ready-made [`github_report_bug_url`] function
+    /// Used to generate a URL for bug reports
+    /// If you are using GitHub, you can use the ready-made [`github_report_bug_url`] reporter
+    ///
+    /// You can use simple closure like this:
+    /// ```
+    /// |payload: Option<String>, bug_report| {
+    /// format!(
+    ///     "https://github.com/FireFragment/rust_gui_panic_handler/issues/new?title=Unhandled panic: {}&body={}",
+    ///     gui_panic_handler::urlencoding::encode(&payload.unwrap_or_default()),
+    ///     gui_panic_handler::urlencoding::encode(&format!("### Panic report\n{bug_report}"))
+    /// )
+    /// ```
+    ///
+    /// If you don't want to have bug report button, you can use [`AppInfoNoBugReport`] instead and set this field to `None`
     pub report_bug_url: Option<F>,
 }
 

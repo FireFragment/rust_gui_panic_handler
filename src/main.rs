@@ -19,7 +19,7 @@ fn main() {
                 url: "https://example.com",
             },
         ],
-        report_bug_url: Some(gui_panic_handler::github_report_bug_url(
+        report_bug_url: Some(gui_panic_handler::GitHubBugReporter::new(
             String::from("FireFragment"),
             String::from("rust_gui_panic_handler"),
         )),
