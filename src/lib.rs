@@ -1,6 +1,8 @@
 #![doc = r#"
 # GUI panic handler
 
+![Screenshot of a dialog with crash information](https://raw.githubusercontent.com/FireFragment/rust_gui_panic_handler/v0.1.0/docs/screenshot.png)
+
 This crate allows you to handle panics with a GUI dialog made with [egui](https://github.com/emilk/egui).
 
 The dialog shows panic payload, information about location of the panic and
