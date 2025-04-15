@@ -31,7 +31,7 @@ impl ReportBugUrlMaker for GitHubBugReporter {
 
 /// Generates a URL for bug reports - to be used as [`AppInfo::report_bug_url`](crate::AppInfo::report_bug_url).
 ///
-/// If you are using GitHub, you can use the [`GitHubBugReporter`] function.
+/// If you are using GitHub, you can use [`GitHubBugReporter`].
 pub trait ReportBugUrlMaker: Clone + Send + Sync + 'static {
     fn get_report_url(&self, payload: Option<String>, bug_report: String) -> String;
 }
