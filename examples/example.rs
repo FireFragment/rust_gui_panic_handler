@@ -4,14 +4,14 @@ fn main() {
 
     gui_panic_handler::register(AppInfo {
         name: "Sample app",
-        additional_text: "We are sorry, the app crashed. To let us fix the crash, please report it using the button below.",
+        additional_text: "We are sorry, the application has crashed. To help us fix the crash, please report it using the button below.",
         links: vec![
             Link {
                 label: "Browse known crash causes",
                 url: "https://example.com",
             },
             Link {
-                label: "Get help on the forum",
+                label: "Get help on our forum",
                 url: "https://example.com",
             },
             Link {
