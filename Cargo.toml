@@ -1,6 +1,12 @@
 [package]
 name = "gui_panic_handler"
+description = "Simple panic handler which summons a GUI dialog, using egui"
 version = "0.1.0"
+authors = ["FireFragment"]
+repository = "https://github.com/your_username/gui_panic_handler"
+license = "GPL-3.0-or-later"
+keywords = ["gui", "panic", "panic-handler", "eframe", "egui"]
+categories = ["gui"]
 edition = "2021"
 
 [dependencies]
