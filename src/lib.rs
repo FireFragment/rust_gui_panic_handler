@@ -1,7 +1,9 @@
+use std::convert::Infallible;
+
 use eframe::egui::{self, Color32, RichText, Vec2};
 
 pub fn github_report_bug_url(repo_owner: String, repo_name: String) -> impl ReportBugUrlMaker {
-    move |payload, bug_report| {
+    move |payload: Option<String>, bug_report| {
         format!(
             "https://github.com/{repo_owner}/{repo_name}/issues/new?title=Unhandled panic: {}&body={}",
             urlencoding::encode(&payload.unwrap_or_default()),
@@ -10,29 +12,53 @@ pub fn github_report_bug_url(repo_owner: String, repo_name: String) -> impl Repo
     }
 }
 
-pub trait ReportBugUrlMaker:
-    Fn(Option<String>, String) -> String + Clone + Send + Sync + 'static
-{
+/// Generates a URL for bug reports - to be used as [`AppInfo::report_bug_url`]
+///
+/// If you are using GitHub, you can use the [`github_report_bug_url`] function.
+pub trait ReportBugUrlMaker: Clone + Send + Sync + 'static {
+    fn get_report_url(&self, payload: Option<String>, bug_report: String) -> String;
 }
+
 impl<T: Fn(Option<String>, String) -> String + Clone + Send + Sync + 'static> ReportBugUrlMaker
     for T
 {
+    fn get_report_url(&self, payload: Option<String>, bug_report: String) -> String {
+        self(payload, bug_report)
+    }
 }
 
+impl ReportBugUrlMaker for Infallible {
+    fn get_report_url(&self, _payload: Option<String>, _bug_report: String) -> String {
+        eprintln!("Called `get_report_url` of `Infallible` - `Infallible` should never exist, but here it is: {self:?}");
+        String::new()
+    }
+}
+
+/// Information about the application used in the error dialog box
 #[derive(Clone, Debug)]
-pub struct AppInfo<F: ReportBugUrlMaker> {
+pub struct AppInfo<F: ReportBugUrlMaker = Infallible> {
+    /// Name of the application
     pub name: &'static str,
     pub additional_text: &'static str,
+
+    /// Links to be displayed in the error dialog box
     pub links: Vec<Link>,
+
+    /// A function to generate a URL for bug reports
+    /// If you are using GitHub, you can use the ready-made [`github_report_bug_url`] function
     pub report_bug_url: Option<F>,
 }
 
+/// A link to be displayed in the error dialog box
 #[derive(Clone, Debug)]
 pub struct Link {
     pub label: &'static str,
     pub url: &'static str,
 }
 
+/// Puts all details about the crash to a single [string](String).
+///
+/// Currently used for the `Report crash` and `Copy details` buttons
 pub fn details<F: ReportBugUrlMaker>(
     panic_payload_display: &Option<String>,
     panic_formatted: &String,
@@ -111,11 +137,11 @@ pub fn show_gui_egui<F: ReportBugUrlMaker>(
                                             );
                                         });
                                     }
-                                    if let Some(get_report_bug_url) = &app_info.report_bug_url {
+                                    if let Some(bug_report_url_maker) = &app_info.report_bug_url {
                                         if ui.button("💬 Report crash").clicked() {
                                             ui.output_mut(|out| {
                                                 out.open_url = Some(egui::OpenUrl {
-                                                    url: get_report_bug_url(
+                                                    url: bug_report_url_maker.get_report_url(
                                                         panic_payload_display.clone(),
                                                         details(
                                                             &panic_payload_display,
