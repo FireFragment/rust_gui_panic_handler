@@ -46,8 +46,8 @@ impl<T: Fn(Option<String>, String) -> String + Clone + Send + Sync + 'static> Re
 
 impl ReportBugUrlMaker for Infallible {
     fn get_report_url(&self, _payload: Option<String>, _bug_report: String) -> String {
-        eprintln!("Called `get_report_url` of `Infallible` - `Infallible` should never exist, but here it is: {self:?}");
-        String::new()
+        // `self` is `Infallible`, so it could never exist => this method can never be called
+        match *self {}
     }
 }
 
