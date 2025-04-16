@@ -44,8 +44,3 @@ fn main() {
 }
 ```
 
-
-If you use [nix](https://nixos.org/) with flakes, you can see the dialog yourself just by running:
-```shell
-nix run git+https://github.com/FireFragment/rust_gui_panic_handler
-```
